@@ -3,7 +3,7 @@ use crate::{ser::StringSerializer, Error, Number, Result};
 use serde::ser;
 use std::fmt::Display;
 
-impl ser::Serialize for Value {
+impl<Capsule: ser::Serialize> ser::Serialize for Value<Capsule> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
@@ -15,6 +15,7 @@ impl ser::Serialize for Value {
             Value::String(ref s) => serializer.serialize_str(s),
             Value::Array(ref v) => v.serialize(serializer),
             Value::Object(ref v) => v.serialize(serializer),
+            Value::Capsule(ref c) => c.serialize(serializer),
         }
     }
 }

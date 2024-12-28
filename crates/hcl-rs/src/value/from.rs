@@ -4,7 +4,7 @@ use std::borrow::Cow;
 macro_rules! impl_from_integer {
     ($($ty:ty),*) => {
         $(
-            impl From<$ty> for Value {
+            impl<Capsule> From<$ty> for Value<Capsule> {
                 fn from(n: $ty) -> Self {
                     Self::Number(n.into())
                 }
@@ -16,73 +16,73 @@ macro_rules! impl_from_integer {
 impl_from_integer!(i8, i16, i32, i64, isize);
 impl_from_integer!(u8, u16, u32, u64, usize);
 
-impl From<f32> for Value {
+impl<Capsule> From<f32> for Value<Capsule> {
     fn from(f: f32) -> Self {
         From::from(f as f64)
     }
 }
 
-impl From<f64> for Value {
+impl<Capsule> From<f64> for Value<Capsule> {
     fn from(f: f64) -> Self {
         Number::from_f64(f).map_or(Value::Null, Value::Number)
     }
 }
 
-impl From<Number> for Value {
+impl<Capsule> From<Number> for Value<Capsule> {
     fn from(num: Number) -> Self {
         Self::Number(num)
     }
 }
 
-impl From<bool> for Value {
+impl<Capsule> From<bool> for Value<Capsule> {
     fn from(b: bool) -> Self {
         Self::Bool(b)
     }
 }
 
-impl From<String> for Value {
+impl<Capsule> From<String> for Value<Capsule> {
     fn from(s: String) -> Self {
         Self::String(s)
     }
 }
 
-impl From<&str> for Value {
+impl<Capsule> From<&str> for Value<Capsule> {
     fn from(s: &str) -> Self {
         Self::String(s.to_string())
     }
 }
 
-impl<'a> From<Cow<'a, str>> for Value {
+impl<'a, Capsule> From<Cow<'a, str>> for Value<Capsule> {
     fn from(s: Cow<'a, str>) -> Self {
         Self::String(s.into_owned())
     }
 }
 
-impl From<Map<String, Value>> for Value {
-    fn from(f: Map<String, Value>) -> Self {
+impl<Capsule> From<Map<String, Value<Capsule>>> for Value<Capsule> {
+    fn from(f: Map<String, Value<Capsule>>) -> Self {
         Self::Object(f)
     }
 }
 
-impl<T: Into<Value>> From<Vec<T>> for Value {
+impl<Capsule, T: Into<Value<Capsule>>> From<Vec<T>> for Value<Capsule> {
     fn from(f: Vec<T>) -> Self {
         Self::Array(f.into_iter().map(Into::into).collect())
     }
 }
 
-impl<'a, T: Clone + Into<Value>> From<&'a [T]> for Value {
+impl<'a, Capsule, T: Clone + Into<Value<Capsule>>> From<&'a [T]> for Value<Capsule> {
     fn from(f: &'a [T]) -> Self {
         Self::Array(f.iter().cloned().map(Into::into).collect())
     }
 }
 
-impl<T: Into<Value>> FromIterator<T> for Value {
+impl<Capsule, T: Into<Value<Capsule>>> FromIterator<T> for Value<Capsule> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Self::Array(iter.into_iter().map(Into::into).collect())
     }
 }
 
-impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Value {
+impl<Capsule, K: Into<String>, V: Into<Value<Capsule>>> FromIterator<(K, V)> for Value<Capsule> {
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
         Self::Object(
             iter.into_iter()
@@ -92,7 +92,7 @@ impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Value {
     }
 }
 
-impl From<()> for Value {
+impl<Capsule> From<()> for Value<Capsule> {
     fn from((): ()) -> Self {
         Self::Null
     }

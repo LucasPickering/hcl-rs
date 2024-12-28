@@ -669,7 +669,7 @@ macro_rules! expression_internal {
 macro_rules! value {
     // Hide distracting implementation details from the generated rustdoc.
     ($($expr:tt)+) => {
-        $crate::value_internal!($($expr)+)
+        $crate::value_internal!($($expr)+) as $crate::value::Value<()>
     };
 }
 

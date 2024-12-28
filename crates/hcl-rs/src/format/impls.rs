@@ -136,9 +136,9 @@ impl Format for Expression {
     }
 }
 
-impl private::Sealed for Value {}
+impl<Capsule> private::Sealed for Value<Capsule> {}
 
-impl Format for Value {
+impl<Capsule> Format for Value<Capsule> {
     fn format<W>(&self, fmt: &mut Formatter<W>) -> Result<()>
     where
         W: io::Write,
@@ -156,6 +156,8 @@ impl Format for Value {
             }
             Value::Array(array) => format_array(fmt, array.iter()),
             Value::Object(object) => format_object(fmt, object.iter().map(|(k, v)| (StrKey(k), v))),
+            // TODO is this right? explain?
+            Value::Capsule(_) => Ok(fmt.write_null()?),
         }
     }
 }

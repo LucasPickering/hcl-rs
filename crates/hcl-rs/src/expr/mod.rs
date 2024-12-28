@@ -81,7 +81,7 @@ impl Expression {
     }
 }
 
-impl From<Expression> for Value {
+impl<Capsule> From<Expression> for Value<Capsule> {
     fn from(expr: Expression) -> Self {
         match expr {
             Expression::Null => Value::Null,
@@ -97,8 +97,8 @@ impl From<Expression> for Value {
     }
 }
 
-impl From<Value> for Expression {
-    fn from(value: Value) -> Self {
+impl<Capsule: Into<Expression>> From<Value<Capsule>> for Expression {
+    fn from(value: Value<Capsule>) -> Self {
         match value {
             Value::Null => Expression::Null,
             Value::Bool(b) => Expression::Bool(b),
@@ -106,6 +106,7 @@ impl From<Value> for Expression {
             Value::String(s) => Expression::String(s),
             Value::Array(array) => array.into_iter().collect(),
             Value::Object(object) => object.into_iter().collect(),
+            Value::Capsule(capsule) => capsule.into(),
         }
     }
 }
@@ -307,7 +308,7 @@ impl From<ObjectKey> for String {
     }
 }
 
-impl From<ObjectKey> for Value {
+impl<Capsule> From<ObjectKey> for Value<Capsule> {
     fn from(key: ObjectKey) -> Self {
         match key {
             ObjectKey::Expression(expr) => expr.into(),

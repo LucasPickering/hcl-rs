@@ -16,7 +16,7 @@ pub type Map<K, V> = indexmap::IndexMap<K, V>;
 
 /// Represents any valid HCL value.
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
-pub enum Value {
+pub enum Value<Capsule = ()> {
     /// Represents a HCL null value.
     #[default]
     Null,
@@ -27,9 +27,11 @@ pub enum Value {
     /// Represents a HCL string.
     String(String),
     /// Represents a HCL array.
-    Array(Vec<Value>),
+    Array(Vec<Value<Capsule>>),
     /// Represents a HCL object.
-    Object(Map<String, Value>),
+    Object(Map<String, Value<Capsule>>),
+    /// TODO
+    Capsule(Capsule),
 }
 
 impl Value {
@@ -200,7 +202,7 @@ impl Value {
     }
 }
 
-impl fmt::Display for Value {
+impl<Capsule> fmt::Display for Value<Capsule> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Formatting a `Value` as string cannot fail.
         let formatted = format::to_string(self).expect("a Value failed to format unexpectedly");
@@ -291,7 +293,7 @@ where
 /// # Errors
 ///
 /// This conversion can fail if `T`'s implementation of [`serde::Deserialize`] decides to fail.
-pub fn from_value<T>(value: Value) -> Result<T>
+pub fn from_value<T, Capsule>(value: Value<Capsule>) -> Result<T>
 where
     T: DeserializeOwned,
 {

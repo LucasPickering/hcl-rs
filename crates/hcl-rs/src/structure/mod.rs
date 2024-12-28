@@ -138,8 +138,9 @@ impl Structure {
     }
 }
 
+// TODO support capsule
 impl From<Structure> for Value {
-    fn from(s: Structure) -> Value {
+    fn from(s: Structure) -> Self {
         match s {
             Structure::Attribute(attr) => attr.into(),
             Structure::Block(block) => block.into(),

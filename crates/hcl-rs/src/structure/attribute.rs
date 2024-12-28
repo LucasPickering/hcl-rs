@@ -48,8 +48,8 @@ impl Attribute {
     }
 }
 
-impl From<Attribute> for Value {
-    fn from(attr: Attribute) -> Value {
+impl<Capsule> From<Attribute> for Value<Capsule> {
+    fn from(attr: Attribute) -> Self {
         iter::once((attr.key.into_inner(), attr.expr)).collect()
     }
 }

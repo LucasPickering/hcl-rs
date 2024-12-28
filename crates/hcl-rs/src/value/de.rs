@@ -4,64 +4,68 @@ use indexmap::map;
 use serde::de::{self, value::StringDeserializer, IntoDeserializer, Visitor};
 use serde::{forward_to_deserialize_any, Deserialize, Deserializer};
 use std::fmt;
+use std::marker::PhantomData;
 
-impl<'de> Deserialize<'de> for Value {
-    fn deserialize<D>(deserializer: D) -> Result<Value, D::Error>
+// TODO support capsule
+impl<'de, Capsule> Deserialize<'de> for Value<Capsule> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        struct ValueVisitor;
+        struct ValueVisitor<Capsule> {
+            capsule: PhantomData<Capsule>,
+        }
 
-        impl<'de> Visitor<'de> for ValueVisitor {
-            type Value = Value;
+        impl<'de, Capsule> Visitor<'de> for ValueVisitor<Capsule> {
+            type Value = Value<Capsule>;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("any valid HCL value")
             }
 
-            fn visit_bool<E>(self, value: bool) -> Result<Value, E> {
+            fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E> {
                 Ok(Value::Bool(value))
             }
 
-            fn visit_i64<E>(self, value: i64) -> Result<Value, E> {
+            fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E> {
                 Ok(Value::Number(value.into()))
             }
 
-            fn visit_u64<E>(self, value: u64) -> Result<Value, E> {
+            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E> {
                 Ok(Value::Number(value.into()))
             }
 
-            fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
+            fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E> {
                 Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
             }
 
-            fn visit_str<E>(self, value: &str) -> Result<Value, E>
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
                 self.visit_string(value.to_owned())
             }
 
-            fn visit_string<E>(self, value: String) -> Result<Value, E> {
+            fn visit_string<E>(self, value: String) -> Result<Self::Value, E> {
                 Ok(Value::String(value))
             }
 
-            fn visit_none<E>(self) -> Result<Value, E> {
+            fn visit_none<E>(self) -> Result<Self::Value, E> {
                 Ok(Value::Null)
             }
 
-            fn visit_some<D>(self, deserializer: D) -> Result<Value, D::Error>
+            fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
             where
                 D: serde::Deserializer<'de>,
             {
                 Deserialize::deserialize(deserializer)
             }
 
-            fn visit_unit<E>(self) -> Result<Value, E> {
+            fn visit_unit<E>(self) -> Result<Self::Value, E> {
                 Ok(Value::Null)
             }
 
-            fn visit_seq<V>(self, mut visitor: V) -> Result<Value, V::Error>
+            fn visit_seq<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
             where
                 V: de::SeqAccess<'de>,
             {
@@ -74,7 +78,7 @@ impl<'de> Deserialize<'de> for Value {
                 Ok(Value::Array(vec))
             }
 
-            fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
+            fn visit_map<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
             where
                 V: de::MapAccess<'de>,
             {
@@ -88,29 +92,31 @@ impl<'de> Deserialize<'de> for Value {
             }
         }
 
-        deserializer.deserialize_any(ValueVisitor)
+        deserializer.deserialize_any(ValueVisitor {
+            capsule: PhantomData,
+        })
     }
 }
 
-pub struct ValueDeserializer {
-    value: Value,
+pub struct ValueDeserializer<Capsule = ()> {
+    value: Value<Capsule>,
 }
 
-impl ValueDeserializer {
-    pub fn new(value: Value) -> ValueDeserializer {
+impl<Capsule> ValueDeserializer<Capsule> {
+    pub fn new(value: Value<Capsule>) -> Self {
         ValueDeserializer { value }
     }
 }
 
-impl<'de> IntoDeserializer<'de, Error> for Value {
-    type Deserializer = ValueDeserializer;
+impl<'de, Capsule> IntoDeserializer<'de, Error> for Value<Capsule> {
+    type Deserializer = ValueDeserializer<Capsule>;
 
     fn into_deserializer(self) -> Self::Deserializer {
         ValueDeserializer { value: self }
     }
 }
 
-impl<'de> de::Deserializer<'de> for ValueDeserializer {
+impl<'de, Capsule> de::Deserializer<'de> for ValueDeserializer<Capsule> {
     type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
@@ -124,6 +130,8 @@ impl<'de> de::Deserializer<'de> for ValueDeserializer {
             Value::String(s) => visitor.visit_string(s),
             Value::Array(array) => visitor.visit_seq(array.into_deserializer()),
             Value::Object(object) => visitor.visit_map(object.into_deserializer()),
+            // TODO explain
+            Value::Capsule(_) => Err(de::Error::custom("TODO")),
         }
     }
 
@@ -160,21 +168,21 @@ impl<'de> de::Deserializer<'de> for ValueDeserializer {
     }
 }
 
-struct EnumAccess {
-    iter: map::IntoIter<String, Value>,
+struct EnumAccess<Capsule> {
+    iter: map::IntoIter<String, Value<Capsule>>,
 }
 
-impl EnumAccess {
-    fn new(map: Map<String, Value>) -> Self {
+impl<Capsule> EnumAccess<Capsule> {
+    fn new(map: Map<String, Value<Capsule>>) -> Self {
         EnumAccess {
             iter: map.into_iter(),
         }
     }
 }
 
-impl<'de> de::EnumAccess<'de> for EnumAccess {
+impl<'de, Capsule> de::EnumAccess<'de> for EnumAccess<Capsule> {
     type Error = Error;
-    type Variant = VariantAccess;
+    type Variant = VariantAccess<Capsule>;
 
     fn variant_seed<V>(mut self, seed: V) -> Result<(V::Value, Self::Variant)>
     where
@@ -190,17 +198,17 @@ impl<'de> de::EnumAccess<'de> for EnumAccess {
     }
 }
 
-struct VariantAccess {
-    value: Value,
+struct VariantAccess<Capsule> {
+    value: Value<Capsule>,
 }
 
-impl VariantAccess {
-    fn new(value: Value) -> Self {
+impl<Capsule> VariantAccess<Capsule> {
+    fn new(value: Value<Capsule>) -> Self {
         VariantAccess { value }
     }
 }
 
-impl<'de> de::VariantAccess<'de> for VariantAccess {
+impl<'de, Capsule> de::VariantAccess<'de> for VariantAccess<Capsule> {
     type Error = Error;
 
     fn unit_variant(self) -> Result<()> {
